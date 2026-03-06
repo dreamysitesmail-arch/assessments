@@ -54,7 +54,7 @@
   .pill{display:inline-block;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:800;margin:8px 0 14px}
   .low{background:var(--green);color:#166534}.mild{background:var(--blue);color:#1d4ed8}.moderate{background:var(--orange);color:#c2410c}.high{background:var(--red);color:#b91c1c}
   .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-  .cards-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .cards-4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
   .mini,.summary,.test-card{border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff}
   .score-line{font-size:22px;font-weight:800;margin-top:6px}
   .summary{background:#f8fafc}
@@ -66,7 +66,7 @@
   .test-card .btn-row{justify-content:flex-start}
   @media (max-width:820px){
     .scale{grid-template-columns:repeat(3,minmax(90px,1fr))}
-    .result-top,.grid,.cards-3{grid-template-columns:1fr}
+    .result-top,.grid,.cards-4{grid-template-columns:1fr}
     .question-text{font-size:22px}
     h1{font-size:27px}
     .wrap{padding:14px}
@@ -81,10 +81,10 @@
 const SCALE=[
   {value:0,text:'Not true'},
   {value:1,text:'Rarely'},
-  {value:2,text:'Slightly'},
-  {value:3,text:'Moderately'},
-  {value:4,text:'Very'},
-  {value:5,text:'Extremely'}
+  {value:2,text:'Sometimes'},
+  {value:3,text:'Often'},
+  {value:4,text:'Very often'},
+  {value:5,text:'Almost always'}
 ];
 
 const tests={
@@ -142,6 +142,23 @@ const tests={
       {title:'Emotional Regulation', cluster:'Emotion', questions:['My emotions shift quickly in response to events.','I feel frustrated easily when things do not go as planned.','I become overwhelmed when juggling multiple tasks.','I react emotionally before thinking things through.','I struggle to calm down after becoming upset.','I sometimes feel emotionally exhausted by daily tasks.']},
       {title:'Motivation & Task Initiation', cluster:'Motivation', questions:['I struggle to start tasks even when they are important.','I feel mentally stuck when facing complex tasks.','I rely on urgency or pressure to get things done.','I lose motivation for tasks quickly.','I avoid tasks that require sustained mental effort.','I often need external reminders to complete tasks.']}
     ]
+  },
+  bipolar:{
+    name:'Bipolar Mood Pattern Self-Reflection Assessment',
+    intro:'A 48-question self-reflection assessment exploring mood elevation, depression, energy changes, sleep patterns, impulsivity, irritability, and mood cycling.',
+    disclaimer:'This assessment is not a medical diagnosis. Bipolar disorder can only be diagnosed by a licensed mental health professional.',
+    thresholds:[60,120,180],
+    sectionMax:30,
+    sections:[
+      {title:'Elevated Mood', cluster:'Mania', questions:['I experience periods where my mood feels unusually high or euphoric.','I sometimes feel extremely confident or unstoppable.','I have times when everything feels exciting or full of possibility.','I feel unusually optimistic or energetic for days at a time.','I sometimes feel mentally faster than usual.','I feel unusually productive during certain mood periods.']},
+      {title:'Increased Energy', cluster:'Mania', questions:['I experience bursts of very high energy.','I feel like I need less sleep during certain periods.','I become very active or productive suddenly.','I feel restless with excessive energy.','I feel like my mind is racing with ideas.','I talk faster than usual during certain mood states.']},
+      {title:'Impulsive Behavior', cluster:'Mania', questions:['I sometimes make impulsive decisions during energetic periods.','I spend money impulsively when my mood is elevated.','I take risks I normally would not take.','I act without thinking during high-energy moods.','I pursue big plans suddenly.','I feel unusually confident making major decisions.']},
+      {title:'Irritability', cluster:'Mixed Mood', questions:['I become easily irritated during certain mood periods.','I experience intense frustration quickly.','I feel unusually impatient with others.','I have sudden anger bursts during mood swings.','I feel emotionally reactive at times.','I become argumentative when overwhelmed.']},
+      {title:'Depressive Mood', cluster:'Depression', questions:['I experience periods of deep sadness.','I sometimes feel emotionally drained or hopeless.','I lose interest in activities I usually enjoy.','I feel mentally slowed down during low moods.','I feel worthless or discouraged during depressive periods.','I struggle with motivation during low mood states.']},
+      {title:'Low Energy', cluster:'Depression', questions:['I feel extremely tired during certain mood phases.','I struggle to get out of bed during low moods.','I feel mentally exhausted easily.','I lack motivation for everyday tasks.','I feel physically slowed down.','I feel like simple tasks require huge effort.']},
+      {title:'Sleep Changes', cluster:'Biological', questions:['My sleep patterns change dramatically during mood shifts.','I sleep far less during energetic periods.','I sleep far more during depressive periods.','I have trouble maintaining a regular sleep schedule.','My sleep patterns affect my mood stability.','I feel wired or restless at night sometimes.']},
+      {title:'Mood Cycling', cluster:'Mood Stability', questions:['My mood sometimes shifts dramatically over time.','I notice cycles of high and low mood states.','I feel emotionally stable for a while then shift again.','Friends or family notice changes in my mood patterns.','I experience periods of extreme productivity followed by burnout.','I feel like my mood sometimes changes in waves.']}
+    ]
   }
 };
 
@@ -150,6 +167,7 @@ let flatQuestions=[];
 let answers=[];
 let currentIndex=0;
 let radarChart=null;
+let barChart=null;
 
 function buildFlat(){
   const t=tests[currentTest];
@@ -186,6 +204,12 @@ function interpretation(level){
     if(level==='Moderate traits') return 'Your answers suggest a noticeable pattern across several borderline-style traits that may be worth discussing with a mental health professional.';
     return 'Your answers suggest strong borderline-style patterns across multiple areas. This does not diagnose anything, but it may be worth seeking professional support.';
   }
+  if(currentTest==='bipolar'){
+    if(level==='Low traits') return 'Your answers suggest relatively stable mood patterns.';
+    if(level==='Mild traits') return 'Some mood variability is present but may fall within normal emotional variation.';
+    if(level==='Moderate traits') return 'Your answers suggest noticeable mood shifts that may be worth discussing with a mental health professional.';
+    return 'Your answers suggest strong mood variability patterns. Consider seeking professional evaluation.';
+  }
   if(level==='Low traits') return 'Your answers show lower narcissistic-style patterns overall.';
   if(level==='Mild traits') return 'Your answers show some narcissistic-style tendencies, but not strongly across most areas.';
   if(level==='Moderate traits') return 'Your answers show a noticeable pattern across several narcissistic-style traits.';
@@ -198,6 +222,16 @@ function encodeResults(){return btoa(JSON.stringify({test:currentTest,answers}))
 function decodeResults(hash){try{const raw=atob(hash); const obj=JSON.parse(raw); if(obj&&tests[obj.test]&&Array.isArray(obj.answers)){currentTest=obj.test; buildFlat(); if(obj.answers.length===flatQuestions.length){answers=obj.answers.map(v=>typeof v==='number'?v:null); return true;}}}catch(e){} return false;}
 function updateHash(){history.replaceState(null,'','#results='+encodeResults());}
 function clearHash(){history.replaceState(null,'',location.pathname+location.search);}
+function bipolarSubtypeHint(){
+  if(currentTest!=='bipolar') return '';
+  const mania=sectionScore(0)+sectionScore(1)+sectionScore(2);
+  const depression=sectionScore(4)+sectionScore(5);
+  if(mania>=55 && depression>=35) return 'Your pattern shows both elevated/activated and depressive features. This could reflect a mixed or cycling pattern worth professional evaluation.';
+  if(mania>=55) return 'Your pattern is more weighted toward elevated energy, confidence, reduced sleep, and impulsive behavior. A clinician would consider whether these episodes resemble hypomanic or manic symptoms.';
+  if(depression>=35 && mania>=35) return 'Your pattern shows meaningful depressive features plus some elevated mood features. A clinician might explore whether this reflects bipolar II-style mood variability or another cycling pattern.';
+  if(depression>=35) return 'Your pattern is more weighted toward depressive symptoms. A clinician would want to understand whether these lows occur alongside past elevated periods.';
+  return 'Your results do not show a strong bipolar-specific pattern from this screening alone.';
+}
 
 function renderHome(){
   document.getElementById('app').innerHTML=`
@@ -206,7 +240,7 @@ function renderHome(){
         <h1>Psychology Self-Reflection Assessments</h1>
         <p class="muted">Choose an assessment to begin. Each test uses one-question-at-a-time flow, progress tracking, section breakdowns, radar charts, shareable result links, and printable PDF reports. These are self-reflection tools and not medical diagnoses.</p>
       </div>
-      <div class="cards-3">
+      <div class="cards-4">
         <div class="test-card">
           <h3>Narcissism</h3>
           <p class="muted">120 questions across 12 sections, including grandiose, vulnerable, protective, and mixed traits.</p>
@@ -221,6 +255,11 @@ function renderHome(){
           <h3>ADHD</h3>
           <p class="muted">48 questions across 8 sections covering focus, distractibility, organization, time, restlessness, impulsivity, emotion, and motivation.</p>
           <div class="btn-row"><button class="btn primary" onclick="startTest('adhd')">Start</button></div>
+        </div>
+        <div class="test-card">
+          <h3>Bipolar Mood Patterns</h3>
+          <p class="muted">48 questions across 8 sections exploring elevated mood, depression, impulsivity, irritability, sleep, and mood cycling.</p>
+          <div class="btn-row"><button class="btn primary" onclick="startTest('bipolar')">Start</button></div>
         </div>
       </div>
     </div>`;
@@ -292,6 +331,9 @@ function renderResults(){
   const breakdown=tests[currentTest].sections.map((section,i)=>{const sc=sectionScore(i); const max=section.questions.length*5; return `<div class="mini"><div class="muted">${section.cluster}</div><div><strong>${section.title}</strong></div><div class="score-line">${sc} / ${max}</div><div class="muted">${sectionLevel(sc,max)}</div></div>`;}).join('');
   const badges=tests[currentTest].sections.slice(0,4).map((section,i)=>`<span class="badge">${section.title.split(' ')[0]} ${sectionScore(i)}</span>`).join('');
   const summaryTop=tests[currentTest].sections.map((section,i)=>({title:section.title,score:sectionScore(i)})).sort((a,b)=>b.score-a.score)[0];
+  const bipolarExtras=currentTest==='bipolar'
+    ? `<div class="summary" style="margin-top:14px"><strong>Bipolar I vs Bipolar II screening note</strong><p class="muted" style="margin:8px 0 0">${bipolarSubtypeHint()}</p></div>`
+    : '';
   document.getElementById('app').innerHTML=`
     <div class="wrap">
       <div class="card hero">
@@ -306,10 +348,12 @@ function renderResults(){
           <h2>Profile Summary</h2>
           <div class="grid">${tests[currentTest].sections.map((section,i)=>`<div class="mini"><div class="muted">${section.title}</div><div class="score-line">${sectionScore(i)} / ${tests[currentTest].sectionMax}</div></div>`).join('')}</div>
           <div class="summary" style="margin-top:14px"><strong>What stands out</strong><p class="muted" style="margin:8px 0 0">${summaryTop.title} appears to be the strongest area in this response pattern.</p></div>
+          ${bipolarExtras}
           <div class="summary" style="margin-top:12px"><strong>Important note</strong><p class="muted" style="margin:8px 0 0">${tests[currentTest].disclaimer}</p></div>
         </div>
         <div class="card chart-wrap"><h2>Radar Chart</h2><canvas id="radarChart"></canvas></div>
       </div>
+      ${currentTest==='bipolar' ? `<div class="card"><h2>Mania vs Depression Graph</h2><canvas id="barChart" style="max-height:320px"></canvas></div>` : ''}
       <div class="card screen-only">
         <h2>Share or Save</h2>
         <input class="linkbox" id="shareLink" value="${shareUrl}" readonly />
@@ -334,6 +378,14 @@ function renderResults(){
   const ctx=document.getElementById('radarChart');
   if(radarChart) radarChart.destroy();
   radarChart=new Chart(ctx,{type:'radar',data:{labels,datasets:[{label:'Section Score',data,fill:true,backgroundColor:'rgba(59,130,246,0.18)',borderColor:'rgba(30,64,175,0.9)',pointBackgroundColor:'rgba(30,64,175,1)',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:tests[currentTest].sectionMax,ticks:{stepSize:5,backdropColor:'transparent'},pointLabels:{font:{size:11}},grid:{color:'#e2e8f0'},angleLines:{color:'#e2e8f0'}}},plugins:{legend:{display:false}}}});
+  if(currentTest==='bipolar'){
+    const mania=sectionScore(0)+sectionScore(1)+sectionScore(2);
+    const depression=sectionScore(4)+sectionScore(5);
+    const mixed=sectionScore(3);
+    const sleep=sectionScore(6);
+    if(barChart) barChart.destroy();
+    barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:['Mania / Hypomania','Depression','Mixed / Irritable','Sleep / Biological'],datasets:[{label:'Score',data:[mania,depression,mixed,sleep],backgroundColor:['rgba(59,130,246,0.7)','rgba(239,68,68,0.7)','rgba(245,158,11,0.7)','rgba(16,185,129,0.7)']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  }
 }
 
 function bootstrap(){
